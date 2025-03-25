@@ -2,7 +2,7 @@
   "name": "roman_numerals",
   "private": true,
   "version": "0.0.0",
-  "homepage": "https://TimothyCruzCk12.github.io/herons_formula",
+  "homepage": "https://TimothyCruzCk12.github.io/roman_numerals",
   "type": "module",
   "scripts": {
     "dev": "vite",
