@@ -171,7 +171,10 @@ const romanNumerals = () => {
             <AlertTitle className="text-blue-700">Roman Numerals Basics</AlertTitle>
             <AlertDescription className="text-blue-600">
               <p className="mb-4">
-                Roman numerals represent numbers by combinations of letters from the Latin alphabet. When a smaller numeral is before a larger one, it means subtraction.
+                Learn to convert regular numbers into Roman numerals! Follow these steps:
+                1. Break down the number using subtraction
+                2. Match each step to the correct Roman numeral symbol
+                3. Combine the symbols to get your answer
               </p>
               <div className="grid grid-cols-4 gap-2 my-4">
                 <div>I = 1</div>
@@ -182,7 +185,15 @@ const romanNumerals = () => {
                 <div>D = 500</div>
                 <div>M = 1000</div>
               </div>
-              <p className="mt-4"><strong>Examples:</strong> IV = 4 (5-1), XC = 90 (100-10), XCIX = 99 (100-10+10-1)</p>
+              <div className="bg-blue-100 p-3 rounded-md mt-2">
+                <p className="font-semibold mb-2">Example: Converting 258 to Roman Numerals</p>
+                <p>Step 1: 258 - 200 = 58 (CC)</p>
+                <p>Step 2: 58 - 50 = 8 (L)</p>
+                <p>Step 3: 8 - 5 = 3 (V)</p>
+                <p>Step 4: 3 - 3 = 0 (III)</p>
+                <p className="mt-2 font-semibold">Final Answer: CCLVIII</p>
+              </div>
+              <p className="mt-4"><strong>Special Cases:</strong> When a smaller value comes before a larger one, it means subtraction (IV = 4, IX = 9, XL = 40, XC = 90)</p>
             </AlertDescription>
           </Alert>
           <div className="space-y-4">
@@ -215,27 +226,35 @@ const romanNumerals = () => {
         <CardFooter className="flex-col items-start bg-gray-50">
           {steps.length > 0 && (
             <div className="w-full">
-              <p className="font-semibold text-purple-600 mb-2">Conversion Steps:</p>
+              <div className="flex items-center justify-between mb-4">
+                <p className="font-semibold text-purple-600">Converting {convertedNumber} to Roman Numerals:</p>
+                <p className="text-sm text-gray-600">Step {currentStepIndex + 1} of {steps.length}</p>
+              </div>
+              <div className="mb-4 bg-purple-100 p-3 rounded">
+                <p className="text-sm text-purple-700">Your progress: {userInputs.filter(Boolean).join('')}</p>
+              </div>
               {steps.map((step, index) => (
                 <div key={index} className={`bg-purple-50 p-2 rounded mb-2 ${index > currentStepIndex ? 'hidden' : ''}`}>
+                  <p className="font-medium">Step {index + 1}:</p>
                   <p>{step.main}</p>
                   {stepCompleted[index] ? (
                     <p className="text-green-600">Add: {step.answer}</p>
                   ) : (
                     index === currentStepIndex && (
                       <div className="flex items-center space-x-1 text-sm mt-2">
+                        <p className="text-gray-600 mr-2">Enter the Roman numeral for this step:</p>
                         <Input
                           type="text"
                           value={userInputs[index]}
                           onChange={(e) => handleStepInputChange(e, index)}
-                          placeholder="Enter Roman numeral"
+                          placeholder="Enter symbol"
                           className={getInputClassName(index)}
                         />
-                        <Button onClick={() => checkStep(index)} className="bg-blue-400 hover:bg-blue-500 px-2 py-1 text-xs">
-                          Check
+                        <Button onClick={() => checkStep(index)} className="bg-blue-400 hover:bg-blue-500 px-4 py-1 text-xs">
+                          Check Answer
                         </Button>
                         <Button onClick={() => skipStep(index)} className="bg-gray-400 hover:bg-gray-500 px-2 py-1 text-xs">
-                          Skip
+                          Show Answer
                         </Button>
                         {inputStatus[index] === 'correct' && <Check className="text-green-500 w-4 h-4" />}
                         {inputStatus[index] === 'incorrect' && <X className="text-red-500 w-4 h-4" />}
