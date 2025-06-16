@@ -1,3 +1,4 @@
+@import '../orbit-glow-button/orbit-glow-button.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
