@@ -4,6 +4,7 @@ import { Input } from '../components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { Calculator, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import '../../orbit-glow-button/orbit-glow-button.css';
+import flexiImage from '../assets/Flexi_Present.png';
 
 const RomanNumerals = () => {
   const [inputNumber, setInputNumber] = useState('');
@@ -371,7 +372,7 @@ const RomanNumerals = () => {
                 {/* Flexi image above the animation box, feet on top of the box */}
                 <div style={{ position: 'relative', width: '100%', height: '60px' }}>
                   <img
-                    src="/Flexi_Present.png"
+                    src={flexiImage}
                     alt="Flexi mascot"
                     style={{
                       position: 'absolute',
