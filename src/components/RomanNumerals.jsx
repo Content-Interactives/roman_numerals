@@ -389,7 +389,7 @@ const RomanNumerals = () => {
                   {/* Animation box with green outline */}
                   <div style={{ position: 'relative', border: '2px solid rgba(0,133,69,0.18)', borderRadius: '16px', padding: '24px', minHeight: '110px', width: '100%', background: 'white', boxSizing: 'border-box', maxWidth: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '-30px' }}>
                     {/* Navigation buttons positioned on left top side, in line with Flexi's feet */}
-                    <div style={{ position: 'absolute', top: '-30px', left: '8px', zIndex: 20 }}>
+                    <div style={{ position: 'absolute', top: '160px', left: '8px', zIndex: 20 }}>
                       <div className="flex items-center space-x-1">
                         <Button
                           type="button"
@@ -412,7 +412,6 @@ const RomanNumerals = () => {
                           }}
                         >
                           <ChevronLeft size={10} />
-                          <span>Back</span>
                         </Button>
                         <Button
                           type="button"
@@ -434,7 +433,6 @@ const RomanNumerals = () => {
                             cursor: (conversionStage === 'input' && !result) || conversionStage === 'final' ? 'not-allowed' : 'pointer'
                           }}
                         >
-                          <span>Forward</span>
                           <ChevronRight size={10} />
                         </Button>
                       </div>
@@ -457,6 +455,7 @@ const RomanNumerals = () => {
                             transform: dropPhase ? 'translate(-50%, calc(-50% + 1.5rem))' : 'translate(-50%, -50%)',
                             opacity: fadeOutInput ? 0 : dropPhase ? 0.8 : 1,
                             zIndex: 2,
+                            textShadow: '0 0 2px rgba(34, 197, 94, 0.6), 0 0 4px rgba(34, 197, 94, 0.4), 0 0 6px rgba(34, 197, 94, 0.3), 0 0 8px rgba(34, 197, 94, 0.2)'
                           }}
                           onClick={() => {
                             if (conversionStage === 'input') {
@@ -477,6 +476,7 @@ const RomanNumerals = () => {
                             transition: 'transform 0.5s, opacity 0.5s',
                             transform: dropPhase ? 'translate(-50%, calc(-50% + 1.5rem))' : 'translate(-50%, -50%)',
                             opacity: fadeOutInput ? 0 : dropPhase ? 0.8 : 1,
+                            textShadow: '0 0 2px rgba(34, 197, 94, 0.6), 0 0 4px rgba(34, 197, 94, 0.4), 0 0 6px rgba(34, 197, 94, 0.3), 0 0 8px rgba(34, 197, 94, 0.2)'
                           }}
                         >
                           {result}
@@ -785,19 +785,8 @@ const RomanNumerals = () => {
                         position: 'relative',
                       }}>
                         {flexiMessage}
-                        <span style={{
-                          position: 'absolute',
-                          right: '-18px',
-                          top: '24px',
-                          width: 0,
-                          height: 0,
-                          borderTop: '10px solid transparent',
-                          borderBottom: '10px solid transparent',
-                          borderLeft: '18px solid white',
-                          filter: 'drop-shadow(-2px 0 0 #008543)'
-                        }} />
-                  </div>
-                </div>
+                      </div>
+                    </div>
                   )}
                 </div> {/* .text-center */}
               </div> {/* .bg-green1000.p-3.rounded-md */}
