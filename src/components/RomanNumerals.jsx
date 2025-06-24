@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
-import { Calculator, RefreshCw } from 'lucide-react';
+import { Calculator, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import '../../orbit-glow-button/orbit-glow-button.css';
 
 const RomanNumerals = () => {
   const [inputNumber, setInputNumber] = useState('');
@@ -23,6 +24,15 @@ const RomanNumerals = () => {
   const [showRomanConversion, setShowRomanConversion] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [fadeOutInput, setFadeOutInput] = useState(false);
+  const [showFinalResult, setShowFinalResult] = useState(false);
+  const [finalRomanNumeral, setFinalRomanNumeral] = useState('');
+  const [hasUserTriggeredBreakdown, setHasUserTriggeredBreakdown] = useState(false);
+  const [lastConvertedIndex, setLastConvertedIndex] = useState(null);
+  const [showBreakdownAnimated, setShowBreakdownAnimated] = useState(false);
+  const [breakdownAnimationTriggered, setBreakdownAnimationTriggered] = useState(false);
+  const [hoveredNumber, setHoveredNumber] = useState(null);
+  const [conversionStage, setConversionStage] = useState('input'); // 'input', 'showNumber', 'breakdownArabic', 'breakdownRoman', 'final'
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const romanNumerals = [
     { value: 1000, numeral: 'M' },
@@ -47,7 +57,7 @@ const RomanNumerals = () => {
       while (remaining >= pair.value) {
         breakdown.push(pair.value);
         remaining -= pair.value;
-      }
+    }
     }
     return breakdown;
   };
@@ -75,76 +85,96 @@ const RomanNumerals = () => {
     return romanNum;
   };
 
-  useEffect(() => {
-    if (animationPhase === 'showBreakdown' && breakdown.length > 0 && currentStep < breakdown.length) {
-      const timer = setTimeout(() => {
-        setCurrentStep(prev => prev + 1);
-      }, 600);
-      return () => clearTimeout(timer);
-    } else if (animationPhase === 'showBreakdown' && currentStep === breakdown.length && !hideInputAndEquals) {
-      // After all numbers are shown, fade out input and equals
-      const timer = setTimeout(() => {
-        setHideInputAndEquals(true);
-      }, 800);
-      return () => clearTimeout(timer);
-    } else if (animationPhase === 'showBreakdown' && currentStep === breakdown.length && hideInputAndEquals && romanConvertedStates.includes(false)) {
-      // Animate conversion one by one
-      const nextToConvert = romanConvertedStates.findIndex(v => !v);
-      if (nextToConvert !== -1) {
-        const timer = setTimeout(() => {
+  // Handle clicking on a breakdown number
+  const handleNumberClick = (index) => {
+    setIsNavigating(false);
           setRomanConvertedStates(prev => {
             const newStates = [...prev];
-            newStates[nextToConvert] = true;
+      newStates[index] = !newStates[index]; // Toggle the state
             return newStates;
           });
-        }, 600);
-        return () => clearTimeout(timer);
+    setLastConvertedIndex(index);
+  };
+
+  // Handle showing final result
+  const handleShowFinalResult = () => {
+    const finalResult = breakdown
+      .map((num, index) => romanConvertedStates[index] ? getRomanNumeral(num) : '')
+      .join('');
+    setFinalRomanNumeral(finalResult);
+    setShowFinalResult(true);
+    setConversionStage('final');
+  };
+
+  // Check if all numbers are converted
+  const allNumbersConverted = breakdown.length > 0 && romanConvertedStates.every(state => state);
+
+  // Flexi instruction message logic
+  let flexiMessage = '';
+  if (result && !hasUserTriggeredBreakdown) {
+    flexiMessage = `Click ${result} to break it into smaller sections!`;
+  } else if (showBreakdown && hasUserTriggeredBreakdown && result && !showFinalResult && !allNumbersConverted) {
+    flexiMessage = "Click each number to see its Roman numeral equivalent!";
+  } else if (showBreakdown && hasUserTriggeredBreakdown && result && !showFinalResult && allNumbersConverted) {
+    // Check if the breakdown contains any subtractive notation numbers
+    const hasSubtractiveNotation = breakdown.some(num => [4, 9, 900, 400, 90, 40].includes(num));
+    if (hasSubtractiveNotation) {
+      // Get the specific subtractive notation numerals present in this breakdown
+      const subtractiveNumerals = breakdown
+        .filter(num => [4, 9, 900, 400, 90, 40].includes(num))
+        .map(num => {
+          if (num === 4) return 'IV';
+          if (num === 9) return 'IX';
+          if (num === 900) return 'CM';
+          if (num === 400) return 'CD';
+          if (num === 90) return 'XC';
+          if (num === 40) return 'XL';
+          return '';
+        })
+        .filter(roman => roman !== '');
+      
+      flexiMessage = `Hover over ${subtractiveNumerals.join(', ')} to learn about subtractive notation!`;
+    } else {
+      flexiMessage = "Great! Now click \"Show Final Result\" to see the full Roman numeral!";
+    }
+  } else if (showFinalResult) {
+    flexiMessage = "Awesome job! You've completed the conversion!";
+  }
+
+  // Animation sequence for input number to breakdown
+  useEffect(() => {
+    if (isNavigating) {
+      // Instantly show breakdown, skip all animation
+      if (animationPhase === 'showNumber' && result && hasUserTriggeredBreakdown) {
+        setDropPhase(true);
+        setFadeOutInput(true);
+        setShowBreakdown(true);
+        setShowBreakdownAnimated(true);
+        setConversionStage('breakdownArabic');
+        setBreakdownAnimationTriggered(true);
       }
-    } else if (animationPhase === 'showBreakdown' && currentStep === breakdown.length && hideInputAndEquals && romanConvertedStates.every(v => v) && !showRomanResult) {
-      // After all conversions, show final result immediately
-      setShowRomanResult(true);
-      setIsAnimating(false);
       return;
     }
-  }, [animationPhase, breakdown, currentStep, hideInputAndEquals, romanConvertedStates, showRomanResult]);
-
-  useEffect(() => {
-    if (animationPhase === 'showNumber' && result && !dropPhase) {
+    if (animationPhase === 'showNumber' && result && hasUserTriggeredBreakdown && !dropPhase) {
       const timer = setTimeout(() => {
         setDropPhase(true);
       }, 1400);
       return () => clearTimeout(timer);
-    } else if (animationPhase === 'showNumber' && dropPhase) {
-      // Start breakdown at the same time as the input number drops
-      setShowBreakdown(true);
-      setTimeout(() => {
-        setFadeOutInput(true); // Start fading out input number after breakdown appears
+    } else if (animationPhase === 'showNumber' && dropPhase && !fadeOutInput) {
+      const timer = setTimeout(() => {
+        setFadeOutInput(true);
         setTimeout(() => {
-          setAnimationPhase('showBreakdown');
-          setIsAnimating(true);
+          setShowBreakdown(true);
+          setShowBreakdownAnimated(true);
+          setConversionStage('breakdownArabic'); // Update stage when breakdown appears
           setTimeout(() => {
-            setShowRomanConversion(true);
-          }, 900);
+            setBreakdownAnimationTriggered(true);
+          }, 100);
         }, 700);
       }, 700);
-    }
-  }, [animationPhase, result, dropPhase]);
-
-  useEffect(() => {
-    if (showRomanConversion && romanConvertedStates.includes(false)) {
-      const nextToConvert = romanConvertedStates.findIndex(v => !v);
-      if (nextToConvert !== -1) {
-        const timer = setTimeout(() => {
-          setRomanConvertedStates(prev => {
-            const newStates = [...prev];
-            newStates[nextToConvert] = true;
-            return newStates;
-          });
-        }, 600);
         return () => clearTimeout(timer);
-      }
     }
-  }, [showRomanConversion, romanConvertedStates]);
+  }, [animationPhase, result, hasUserTriggeredBreakdown, dropPhase, fadeOutInput, isNavigating]);
 
   const handleConvert = (e) => {
     e.preventDefault();
@@ -154,7 +184,9 @@ const RomanNumerals = () => {
       return;
     }
 
+    console.log('handleConvert called with number:', num);
     setShowWarning(false);
+    setConversionStage('input'); // Reset to input stage
     const numberBreakdown = breakDownNumber(num);
     setBreakdown(numberBreakdown);
     setResult(num.toString());
@@ -163,7 +195,7 @@ const RomanNumerals = () => {
     setRomanResult('');
     setAnimatingNumbers([]);
     setShowRomanResult(false);
-    setAnimationPhase('showNumber');
+    setAnimationPhase('idle');
     setBreakdownStates(Array(numberBreakdown.length).fill('number'));
     setShowRomanBreakdown(false);
     setRomanConvertedStates(Array(numberBreakdown.length).fill(false));
@@ -171,7 +203,13 @@ const RomanNumerals = () => {
     setDropPhase(false);
     setShowRomanConversion(false);
     setShowBreakdown(false);
+    setHasUserTriggeredBreakdown(false);
     setFadeOutInput(false);
+    setShowFinalResult(false);
+    setFinalRomanNumeral('');
+    setShowBreakdownAnimated(false);
+    setBreakdownAnimationTriggered(false);
+    setHoveredNumber(null);
   };
 
   const handleInputChange = (e) => {
@@ -186,11 +224,79 @@ const RomanNumerals = () => {
     }
   };
 
+  // Navigation functions for conversion stages
+  const goBack = () => {
+    setIsNavigating(true);
+    console.log('=== BACK BUTTON CLICKED ===');
+    console.log('Current stage:', conversionStage);
+    
+    if (conversionStage === 'final') {
+      setConversionStage('breakdownRoman');
+      setShowFinalResult(false);
+      console.log('Going back to breakdownRoman stage');
+    } else if (conversionStage === 'breakdownRoman') {
+      setConversionStage('breakdownArabic');
+      setRomanConvertedStates(Array(breakdown.length).fill(false));
+      console.log('Going back to breakdownArabic stage');
+    } else if (conversionStage === 'breakdownArabic') {
+      setConversionStage('input');
+      setShowBreakdown(false);
+      setShowBreakdownAnimated(false);
+      setBreakdownAnimationTriggered(false);
+      setHasUserTriggeredBreakdown(false);
+      setAnimationPhase('idle');
+      setDropPhase(false);
+      setFadeOutInput(false);
+      console.log('Going back to input stage');
+    }
+  };
+
+  const goForward = () => {
+    setIsNavigating(true);
+    console.log('=== FORWARD BUTTON CLICKED ===');
+    console.log('Current stage:', conversionStage);
+    
+    if (conversionStage === 'input' && result) {
+      setConversionStage('showNumber');
+      setAnimationPhase('showNumber');
+      setHasUserTriggeredBreakdown(true);
+      console.log('Going forward to showNumber stage');
+    } else if (conversionStage === 'showNumber') {
+      setConversionStage('breakdownArabic');
+      setDropPhase(true);
+      setTimeout(() => {
+        setFadeOutInput(true);
+        setTimeout(() => {
+          setShowBreakdown(true);
+          setShowBreakdownAnimated(true);
+          setTimeout(() => {
+            setBreakdownAnimationTriggered(true);
+          }, 100);
+        }, 700);
+      }, 700);
+      console.log('Going forward to breakdownArabic stage');
+    } else if (conversionStage === 'breakdownArabic') {
+      // Convert all numbers to Roman numerals
+      setRomanConvertedStates(Array(breakdown.length).fill(true));
+      setConversionStage('breakdownRoman');
+      console.log('Going forward to breakdownRoman stage');
+    } else if (conversionStage === 'breakdownRoman') {
+      setConversionStage('final');
+      handleShowFinalResult();
+      console.log('Going forward to final stage');
+    }
+  };
+
   const generateRandomNumber = () => {
     const randomNum = Math.floor(Math.random() * 4000) + 1;
     setInputNumber(randomNum.toString());
     setShowWarning(false);
   };
+
+  // Reset lastConvertedIndex when breakdown is reset
+  useEffect(() => {
+    if (!showBreakdown) setLastConvertedIndex(null);
+  }, [showBreakdown]);
 
   return (
     <div className="bg-gray-100 p-4 pt-2 min-h-screen">
@@ -231,9 +337,9 @@ const RomanNumerals = () => {
                 >
                   Convert
                 </Button>
-                <Button
-                  type="button"
-                  onClick={generateRandomNumber}
+              <Button 
+                type="button"
+                onClick={generateRandomNumber} 
                   style={{
                     backgroundColor: '#008543',
                     color: 'white',
@@ -247,39 +353,129 @@ const RomanNumerals = () => {
                     alignItems: 'center',
                     boxShadow: 'none'
                   }}
-                >
+              >
                   <RefreshCw style={{ color: 'white', marginRight: '0.5rem', height: '1.25rem', width: '1.25rem' }} />
-                  Random
-                </Button>
+                Random
+              </Button>
               </div>
             </div>
             {showWarning && (
-              <p className="text-sm text-red-500">Please enter a valid number between 1 and 4000.</p>
+              <p className="text-sm text-black">Please enter a valid number between 1 and 4000.</p>
             )}
           </form>
         </CardContent>
         <CardFooter className="flex-col items-start bg-green1000">
-          <div className="w-full space-y-4">
+          <div className="w-full space-y-4" style={{ marginTop: '2rem' }}>
             <div className="bg-green1000 p-4 rounded-lg">
-              <div className="bg-green1000 p-3 rounded-md">
-                <div className="text-center">
+              <div className="bg-green1000 p-3 rounded-md" style={{ position: 'relative' }}>
+                {/* Flexi image above the animation box, feet on top of the box */}
+                <div style={{ position: 'relative', width: '100%', height: '60px' }}>
+                  <img
+                    src="/Flexi_Present.png"
+                    alt="Flexi mascot"
+                    style={{
+                      position: 'absolute',
+                      right: '16px',
+                      bottom: '28px',
+                      width: '90px',
+                      height: 'auto',
+                      zIndex: 2,
+                      pointerEvents: 'none',
+                      userSelect: 'none',
+                    }}
+                  />
+                </div>
+                  <div className="text-center">
                   {/* Animation box with green outline */}
-                  <div style={{ border: '2px solid rgba(0,133,69,0.18)', borderRadius: '16px', padding: '24px', minHeight: '110px', width: '100%', background: 'white', boxSizing: 'border-box', maxWidth: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ position: 'relative', border: '2px solid rgba(0,133,69,0.18)', borderRadius: '16px', padding: '24px', minHeight: '110px', width: '100%', background: 'white', boxSizing: 'border-box', maxWidth: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '-30px' }}>
+                    {/* Navigation buttons positioned on left top side, in line with Flexi's feet */}
+                    <div style={{ position: 'absolute', top: '-30px', left: '8px', zIndex: 20 }}>
+                      <div className="flex items-center space-x-1">
+                        <Button
+                          type="button"
+                          onClick={goBack}
+                          size="sm"
+                          className="flex items-center space-x-1"
+                          style={{
+                            backgroundColor: '#008543',
+                            color: 'white',
+                            border: 'none',
+                            fontWeight: 600,
+                            fontSize: '0.7rem',
+                            padding: '0.2rem 0.4rem',
+                            minWidth: 'auto',
+                            height: '24px',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                            borderRadius: '6px',
+                            opacity: 1,
+                            cursor: conversionStage === 'input' ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          <ChevronLeft size={10} />
+                          <span>Back</span>
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={goForward}
+                          size="sm"
+                          className="flex items-center space-x-1"
+                          style={{
+                            backgroundColor: '#008543',
+                            color: 'white',
+                            border: 'none',
+                            fontWeight: 600,
+                            fontSize: '0.7rem',
+                            padding: '0.2rem 0.4rem',
+                            minWidth: 'auto',
+                            height: '24px',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                            borderRadius: '6px',
+                            opacity: 1,
+                            cursor: (conversionStage === 'input' && !result) || conversionStage === 'final' ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          <span>Forward</span>
+                          <ChevronRight size={10} />
+                        </Button>
+                      </div>
+                    </div>
+                    
                     <div className="flex flex-col w-full h-24 relative">
                       {/* Default message when no conversion is active */}
                       {!result && (
                         <div className="absolute inset-0 flex items-center justify-center">
                           <span className="text-lg text-gray-600 text-center">Enter a number to see its Roman numeral equivalent!</span>
-                        </div>
+                          </div>
                       )}
                       {/* Input number at the top */}
-                      {animationPhase === 'showNumber' && result && (
+                      {animationPhase === 'idle' && result && !hasUserTriggeredBreakdown && (
+                        <span
+                          className={`text-5xl font-bold text-black transition-all duration-500 absolute left-1/2 -translate-x-1/2 cursor-pointer hover:scale-110`}
+                          style={{
+                            top: '50%',
+                            transition: 'transform 0.5s, opacity 0.5s',
+                            transform: dropPhase ? 'translate(-50%, calc(-50% + 1.5rem))' : 'translate(-50%, -50%)',
+                            opacity: fadeOutInput ? 0 : dropPhase ? 0.8 : 1,
+                            zIndex: 2,
+                          }}
+                          onClick={() => {
+                            if (conversionStage === 'input') {
+                              goForward();
+                            }
+                          }}
+                          title="Click to break down the number"
+                        >
+                          {result}
+                        </span>
+                      )}
+                      {/* After user triggers breakdown, continue as before */}
+                      {animationPhase === 'showNumber' && result && hasUserTriggeredBreakdown && (
                         <span
                           className={`text-5xl font-bold text-black transition-all duration-500 absolute left-1/2 -translate-x-1/2`}
                           style={{
-                            top: 0,
+                            top: '50%',
                             transition: 'transform 0.5s, opacity 0.5s',
-                            transform: dropPhase ? 'translate(-50%, 1.5rem)' : 'translate(-50%, 0)',
+                            transform: dropPhase ? 'translate(-50%, calc(-50% + 1.5rem))' : 'translate(-50%, -50%)',
                             opacity: fadeOutInput ? 0 : dropPhase ? 0.8 : 1,
                           }}
                         >
@@ -287,44 +483,326 @@ const RomanNumerals = () => {
                         </span>
                       )}
                       {/* Breakdown appears centered */}
-                      {showBreakdown && result && (
-                        <div
-                          className="flex items-center justify-center w-full h-full"
+                      {showBreakdownAnimated && hasUserTriggeredBreakdown && result && !showFinalResult && (
+                        <div className="flex flex-col items-center justify-center w-full h-full">
+                          {breakdown.length > 6 ? (
+                            <>
+                              {/* Balanced two-line layout for large breakdowns */}
+                              {(() => {
+                                const midPoint = Math.ceil(breakdown.length / 2);
+                                const firstLine = breakdown.slice(0, midPoint);
+                                const secondLine = breakdown.slice(midPoint);
+                                return (
+                                  <>
+                                    {/* First line */}
+                                    <div
+                                      className="flex items-center justify-center w-full"
+                                      style={{ 
+                                        justifyContent: 'center',
+                                        gap: '0.5em',
+                                        marginBottom: '0.5em'
+                                      }}
+                                    >
+                                      {firstLine.map((num, index) => {
+                                        const originalIndex = index;
+                                        const showSubtractiveMsg = romanConvertedStates[originalIndex] && (num === 4 || num === 9 || num === 900 || num === 400 || num === 90 || num === 40) && hoveredNumber === originalIndex;
+                                        return (
+                                          <div
+                                            key={`first-${index}`}
+                                            className={`flex flex-row items-center justify-center transition-all cursor-pointer hover:scale-110`}
+                                            style={{
+                                              width: '4rem',
+                                              minWidth: '4rem',
+                                              maxWidth: '4rem',
+                                              overflow: 'visible',
+                                              padding: 0,
+                                              margin: 0,
+                                              opacity: breakdownAnimationTriggered ? 1 : 0,
+                                              transform: breakdownAnimationTriggered ? 'translateY(0)' : 'translateY(-2.5rem)',
+                                              transition: isNavigating ? 'none' : 'opacity 1.2s cubic-bezier(0.77,0,0.18,1), transform 1.6s cubic-bezier(0.77,0,0.18,1)',
+                                            }}
+                                            onClick={() => handleNumberClick(originalIndex)}
+                                            onMouseEnter={() => romanConvertedStates[originalIndex] && (num === 4 || num === 9 || num === 900 || num === 400 || num === 90 || num === 40) && setHoveredNumber(originalIndex)}
+                                            onMouseLeave={() => setHoveredNumber(null)}
+                                          >
+                                            <div style={{ width: '4rem', minWidth: '4rem', maxWidth: '4rem', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                                              <span className={`text-3xl font-bold text-black ${isNavigating ? '' : 'transition-all duration-[1200ms]'} w-full text-center ${romanConvertedStates[originalIndex] ? 'opacity-0 -translate-y-4 absolute' : 'opacity-100 translate-y-0 relative'}`}>{num}</span>
+                                              <span className={`text-3xl font-bold text-black ${isNavigating ? '' : 'transition-all duration-[1200ms]'} w-full text-center ${romanConvertedStates[originalIndex] ? 'opacity-100 translate-y-0 relative' : 'opacity-0 translate-y-4 absolute'}`} style={{
+                                                textShadow: (num === 4 || num === 9 || num === 900 || num === 400 || num === 90 || num === 40) ? '0 0 2px rgba(34, 197, 94, 0.6), 0 0 4px rgba(34, 197, 94, 0.4), 0 0 6px rgba(34, 197, 94, 0.3), 0 0 8px rgba(34, 197, 94, 0.2)' : 'none'
+                                              }}>{getRomanNumeral(num)}</span>
+                                              {showSubtractiveMsg && (
+                                                <span style={{
+                                                  position: 'absolute',
+                                                  left: index === Math.floor(breakdown.length / 2) ? '50%' : 
+                                                        index < breakdown.length / 2 ? 'auto' : '80%',
+                                                  right: index < breakdown.length / 2 ? '80%' : 'auto',
+                                                  top: index === Math.floor(breakdown.length / 2) ? '-140%' : '50%',
+                                                  transform: index === Math.floor(breakdown.length / 2) ? 'translateX(-50%)' : 'translateY(-50%)',
+                                                  marginLeft: index === Math.floor(breakdown.length / 2) ? '0' : 
+                                                             index < breakdown.length / 2 ? '0' : '5px',
+                                                  marginRight: index < breakdown.length / 2 ? '0' : 
+                                                              index < breakdown.length / 2 ? '5px' : '0',
+                                                  background: 'white',
+                                                  border: '1px solid #008543',
+                                                  borderRadius: '8px',
+                                                  padding: '3px 7px',
+                                                  color: '#008543',
+                                                  fontWeight: 400,
+                                                  fontSize: '0.78rem',
+                                                  boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                                                  maxWidth: '220px',
+                                                  minWidth: '180px',
+                                                  wordBreak: 'break-word',
+                                                  zIndex: 20,
+                                                  textAlign: 'center',
+                                                  lineHeight: 1.2,
+                                                  transition: 'none',
+                                                  opacity: 1,
+                                                }}>
+                                                  {num === 4 && 'IV represents 4. It uses subtractive notation (I before V).'}
+                                                  {num === 9 && 'IX represents 9. It uses subtractive notation (I before X).'}
+                                                  {num === 900 && 'CM represents 900. It uses subtractive notation (C before M).'}
+                                                  {num === 400 && 'CD represents 400. It uses subtractive notation (C before D).'}
+                                                  {num === 90 && 'XC represents 90. It uses subtractive notation (X before C).'}
+                                                  {num === 40 && 'XL represents 40. It uses subtractive notation (X before L).'}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                    {/* Second line */}
+                                    <div
+                                      className="flex items-center justify-center w-full"
                           style={{
-                            gap: showRomanResult ? '0' : '0.75em',
-                            transition: 'gap 1.6s cubic-bezier(0.77,0,0.18,1)',
+                                        justifyContent: 'center',
+                                        gap: breakdown.filter(num => num === 1).length > 2 ? '0.005em' : '0.5em'
+                                      }}
+                                    >
+                                      {secondLine.map((num, index) => {
+                                        const originalIndex = midPoint + index;
+                                        const showSubtractiveMsg = romanConvertedStates[originalIndex] && (num === 4 || num === 9 || num === 900 || num === 400 || num === 90 || num === 40) && hoveredNumber === originalIndex;
+                                        return (
+                                          <div
+                                            key={`second-${index}`}
+                                            className={`flex flex-row items-center justify-center transition-all cursor-pointer hover:scale-110`}
+                                            style={{
+                                              width: '4rem',
+                                              minWidth: '4rem',
+                                              maxWidth: '4rem',
+                                              overflow: 'visible',
+                                              padding: 0,
+                                              margin: 0,
+                                              opacity: breakdownAnimationTriggered ? 1 : 0,
+                                              transform: breakdownAnimationTriggered ? 'translateY(0)' : 'translateY(-2.5rem)',
+                                              transition: isNavigating ? 'none' : 'opacity 1.2s cubic-bezier(0.77,0,0.18,1), transform 1.6s cubic-bezier(0.77,0,0.18,1)',
                           }}
-                        >
-                          {breakdown.map((num, index) => (
+                                            onClick={() => handleNumberClick(originalIndex)}
+                                            onMouseEnter={() => romanConvertedStates[originalIndex] && (num === 4 || num === 9 || num === 900 || num === 400 || num === 90 || num === 40) && setHoveredNumber(originalIndex)}
+                                            onMouseLeave={() => setHoveredNumber(null)}
+                                          >
+                                            <div style={{ width: '4rem', minWidth: '4rem', maxWidth: '4rem', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                                              <span className={`text-3xl font-bold text-black ${isNavigating ? '' : 'transition-all duration-[1200ms]'} w-full text-center ${romanConvertedStates[originalIndex] ? 'opacity-0 -translate-y-4 absolute' : 'opacity-100 translate-y-0 relative'}`}>{num}</span>
+                                              <span className={`text-3xl font-bold text-black ${isNavigating ? '' : 'transition-all duration-[1200ms]'} w-full text-center ${romanConvertedStates[originalIndex] ? 'opacity-100 translate-y-0 relative' : 'opacity-0 translate-y-4 absolute'}`} style={{
+                                                textShadow: (num === 4 || num === 9 || num === 900 || num === 400 || num === 90 || num === 40) ? '0 0 2px rgba(34, 197, 94, 0.6), 0 0 4px rgba(34, 197, 94, 0.4), 0 0 6px rgba(34, 197, 94, 0.3), 0 0 8px rgba(34, 197, 94, 0.2)' : 'none'
+                                              }}>{getRomanNumeral(num)}</span>
+                                              {showSubtractiveMsg && (
+                                                <span style={{
+                                                  position: 'absolute',
+                                                  left: index === Math.floor(breakdown.length / 2) ? '50%' : 
+                                                        index < breakdown.length / 2 ? 'auto' : '80%',
+                                                  right: index < breakdown.length / 2 ? '80%' : 'auto',
+                                                  top: index === Math.floor(breakdown.length / 2) ? '-140%' : '50%',
+                                                  transform: index === Math.floor(breakdown.length / 2) ? 'translateX(-50%)' : 'translateY(-50%)',
+                                                  marginLeft: index === Math.floor(breakdown.length / 2) ? '0' : 
+                                                             index < breakdown.length / 2 ? '0' : '5px',
+                                                  marginRight: index < breakdown.length / 2 ? '0' : 
+                                                              index < breakdown.length / 2 ? '5px' : '0',
+                                                  background: 'white',
+                                                  border: '1px solid #008543',
+                                                  borderRadius: '8px',
+                                                  padding: '3px 7px',
+                                                  color: '#008543',
+                                                  fontWeight: 400,
+                                                  fontSize: '0.78rem',
+                                                  boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                                                  maxWidth: '220px',
+                                                  minWidth: '180px',
+                                                  wordBreak: 'break-word',
+                                                  zIndex: 20,
+                                                  textAlign: 'center',
+                                                  lineHeight: 1.2,
+                                                  transition: 'none',
+                                                  opacity: 1,
+                                                }}>
+                                                  {num === 4 && 'IV represents 4. It uses subtractive notation (I before V).'}
+                                                  {num === 9 && 'IX represents 9. It uses subtractive notation (I before X).'}
+                                                  {num === 900 && 'CM represents 900. It uses subtractive notation (C before M).'}
+                                                  {num === 400 && 'CD represents 400. It uses subtractive notation (C before D).'}
+                                                  {num === 90 && 'XC represents 90. It uses subtractive notation (X before C).'}
+                                                  {num === 40 && 'XL represents 40. It uses subtractive notation (X before L).'}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </>
+                                );
+                              })()}
+                            </>
+                          ) : (
                             <div
-                              key={index}
-                              className={`flex items-center justify-center transition-all duration-[2500ms] ${fadeOutInput ? 'translate-y-0 opacity-100' : '-translate-y-6 opacity-0'}`}
+                              className="flex items-center justify-center w-full h-full"
                               style={{
-                                transitionProperty: 'opacity,transform,width,min-width,max-width',
-                                transitionDuration: '2.5s,2.5s,1.6s,1.6s,1.6s',
-                                transitionTimingFunction: 'cubic-bezier(0.86,0,0.07,1),cubic-bezier(0.86,0,0.07,1),cubic-bezier(0.77,0,0.18,1),cubic-bezier(0.77,0,0.18,1),cubic-bezier(0.77,0,0.18,1)',
-                                transitionDelay: romanConvertedStates[index] ? `${0.1 * index}s` : '0s',
-                                width: showRomanResult ? 'auto' : '6rem',
-                                minWidth: showRomanResult ? 'auto' : '6rem',
-                                maxWidth: showRomanResult ? 'auto' : '6rem',
-                                overflow: 'hidden',
-                                padding: 0,
-                                margin: 0
+                                justifyContent: 'center',
+                                gap: breakdown.filter(num => num === 1).length > 2 ? '0.005em' : 
+                                     breakdown.length <= 3 && breakdown.some(num => num === 1000) ? '1.35em' :
+                                     breakdown.filter(num => num === 1000).length > 1 ? '1.4em' :
+                                     breakdown.length <= 3 ? '0.6em' : '0.5em',
+                                flexWrap: 'wrap',
+                                alignContent: 'center'
                               }}
                             >
-                              {/* Roman numeral conversion animation, one by one */}
-                              <span className={`text-5xl font-bold text-black transition-all duration-[1200ms] w-full text-center ${romanConvertedStates[index] ? 'opacity-0 -translate-y-4 absolute' : 'opacity-100 translate-y-0 relative'}`}>{num}</span>
-                              <span className={`text-5xl font-bold text-black transition-all duration-[1200ms] w-full text-center ${romanConvertedStates[index] ? 'opacity-100 translate-y-0 relative' : 'opacity-0 translate-y-4 absolute'}`}>{getRomanNumeral(num)}</span>
+                              {breakdown.map((num, index) => {
+                                const showSubtractiveMsg = romanConvertedStates[index] && (num === 4 || num === 9 || num === 900 || num === 400 || num === 90 || num === 40) && hoveredNumber === index;
+                                return (
+                                  <div
+                                    key={index}
+                                    className={`flex flex-row items-center justify-center transition-all cursor-pointer hover:scale-110`}
+                                    style={{
+                                      width: '4rem',
+                                      minWidth: '4rem',
+                                      maxWidth: '4rem',
+                                      overflow: 'visible',
+                                      padding: 0,
+                                      margin: 0,
+                                      opacity: breakdownAnimationTriggered ? 1 : 0,
+                                      transform: breakdownAnimationTriggered ? 'translateY(0)' : 'translateY(-2.5rem)',
+                                      transition: isNavigating ? 'none' : 'opacity 1.2s cubic-bezier(0.77,0,0.18,1), transform 1.6s cubic-bezier(0.77,0,0.18,1)',
+                                    }}
+                                    onClick={() => handleNumberClick(index)}
+                                    onMouseEnter={() => romanConvertedStates[index] && (num === 4 || num === 9 || num === 900 || num === 400 || num === 90 || num === 40) && setHoveredNumber(index)}
+                                    onMouseLeave={() => setHoveredNumber(null)}
+                                  >
+                                    <div style={{ width: '4rem', minWidth: '4rem', maxWidth: '4rem', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                                      {/* Roman numeral conversion animation, triggered by click */}
+                                      <span className={`text-3xl font-bold text-black ${isNavigating ? '' : 'transition-all duration-[1200ms]'} w-full text-center ${romanConvertedStates[index] ? 'opacity-0 -translate-y-4 absolute' : 'opacity-100 translate-y-0 relative'}`}>{num}</span>
+                                      <span className={`text-3xl font-bold text-black ${isNavigating ? '' : 'transition-all duration-[1200ms]'} w-full text-center ${romanConvertedStates[index] ? 'opacity-100 translate-y-0 relative' : 'opacity-0 translate-y-4 absolute'}`} style={{
+                                        textShadow: (num === 4 || num === 9 || num === 900 || num === 400 || num === 90 || num === 40) ? '0 0 2px rgba(34, 197, 94, 0.6), 0 0 4px rgba(34, 197, 94, 0.4), 0 0 6px rgba(34, 197, 94, 0.3), 0 0 8px rgba(34, 197, 94, 0.2)' : 'none'
+                                      }}>{getRomanNumeral(num)}</span>
+                                      {showSubtractiveMsg && (
+                                        <span style={{
+                                          position: 'absolute',
+                                          left: index === Math.floor(breakdown.length / 2) ? '50%' : 
+                                                        index < breakdown.length / 2 ? 'auto' : '80%',
+                                          right: index < breakdown.length / 2 ? '80%' : 'auto',
+                                          top: index === Math.floor(breakdown.length / 2) ? '-140%' : '50%',
+                                          transform: index === Math.floor(breakdown.length / 2) ? 'translateX(-50%)' : 'translateY(-50%)',
+                                          marginLeft: index === Math.floor(breakdown.length / 2) ? '0' : 
+                                                             index < breakdown.length / 2 ? '0' : '5px',
+                                          marginRight: index < breakdown.length / 2 ? '0' : 
+                                                              index < breakdown.length / 2 ? '5px' : '0',
+                                          background: 'white',
+                                          border: '1px solid #008543',
+                                          borderRadius: '8px',
+                                          padding: '3px 7px',
+                                          color: '#008543',
+                                          fontWeight: 400,
+                                          fontSize: '0.78rem',
+                                          boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                                          maxWidth: '220px',
+                                          minWidth: '180px',
+                                          wordBreak: 'break-word',
+                                          zIndex: 20,
+                                          textAlign: 'center',
+                                          lineHeight: 1.2,
+                                          transition: 'none',
+                                          opacity: 1,
+                                        }}>
+                                          {num === 4 && 'IV represents 4. It uses subtractive notation (I before V).'}
+                                          {num === 9 && 'IX represents 9. It uses subtractive notation (I before X).'}
+                                          {num === 900 && 'CM represents 900. It uses subtractive notation (C before M).'}
+                                          {num === 400 && 'CD represents 400. It uses subtractive notation (C before D).'}
+                                          {num === 90 && 'XC represents 90. It uses subtractive notation (X before C).'}
+                                          {num === 40 && 'XL represents 40. It uses subtractive notation (X before L).'}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
-                          ))}
+                          )}
                         </div>
                       )}
+                      {/* Final result display */}
+                      {showFinalResult && (
+                        <div className="flex flex-col items-center justify-center w-full h-full space-y-4">
+                          <span className="text-5xl font-bold text-black">{finalRomanNumeral}</span>
+                        </div>
+                      )}
+                    </div> {/* .flex.flex-col.w-full.h-24.relative */}
+                  </div> {/* animation box */}
+                  
+                  {/* Show Final Result button - positioned underneath the animation box */}
+                  {showBreakdown && hasUserTriggeredBreakdown && result && !showFinalResult && allNumbersConverted && (
+                    <div
+                      className="glow-button simple-glow"
+                      style={{ margin: '24px auto 0 auto', width: 'fit-content', minWidth: 140, height: 44, fontSize: 16, fontWeight: 600, padding: '0 18px', cursor: 'pointer' }}
+                      onClick={handleShowFinalResult}
+                      tabIndex={0}
+                      role="button"
+                      onKeyPress={e => { if (e.key === 'Enter' || e.key === ' ') handleShowFinalResult(); }}
+                    >
+                      Show Final Result
                     </div>
+                  )}
+                  
+                  {/* Flexi speech bubble message */}
+                  {flexiMessage && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        right: '120px',
+                        top: '-50px',
+                        zIndex: 3,
+                        maxWidth: flexiMessage.startsWith('Great! Now click') ? '340px' : '260px',
+                      }}
+                    >
+                      <div style={{
+                        background: 'white',
+                        border: '2px solid #008543',
+                        borderRadius: '16px',
+                        padding: '12px 18px',
+                        color: '#008543',
+                        fontWeight: 600,
+                        fontSize: '1rem',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                        marginBottom: '8px',
+                        position: 'relative',
+                      }}>
+                        {flexiMessage}
+                        <span style={{
+                          position: 'absolute',
+                          right: '-18px',
+                          top: '24px',
+                          width: 0,
+                          height: 0,
+                          borderTop: '10px solid transparent',
+                          borderBottom: '10px solid transparent',
+                          borderLeft: '18px solid white',
+                          filter: 'drop-shadow(-2px 0 0 #008543)'
+                        }} />
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
+                  )}
+                </div> {/* .text-center */}
+              </div> {/* .bg-green1000.p-3.rounded-md */}
+            </div> {/* .bg-green1000.p-4.rounded-lg */}
+          </div> {/* .w-full.space-y-4 */}
         </CardFooter>
       </Card>
     </div>

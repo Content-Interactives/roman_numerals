@@ -12,7 +12,5 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     emptyOutDir: true
-  },
-  base: '/roman_numerals/'
-  
+  }
 })
