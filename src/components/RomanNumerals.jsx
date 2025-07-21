@@ -4,7 +4,6 @@ import { Input } from '../components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { Calculator, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import '../../orbit-glow-button/orbit-glow-button.css';
-import flexiImage from '../assets/Flexi_Present.png';
 
 const RomanNumerals = () => {
   const [inputNumber, setInputNumber] = useState('');
@@ -32,6 +31,7 @@ const RomanNumerals = () => {
   const [showBreakdownAnimated, setShowBreakdownAnimated] = useState(false);
   const [breakdownAnimationTriggered, setBreakdownAnimationTriggered] = useState(false);
   const [hoveredNumber, setHoveredNumber] = useState(null);
+  const [clickedNumber, setClickedNumber] = useState(null);
   const [conversionStage, setConversionStage] = useState('input'); // 'input', 'showNumber', 'breakdownArabic', 'breakdownRoman', 'final'
   const [isNavigating, setIsNavigating] = useState(false);
 
@@ -89,11 +89,21 @@ const RomanNumerals = () => {
   // Handle clicking on a breakdown number
   const handleNumberClick = (index) => {
     setIsNavigating(false);
-          setRomanConvertedStates(prev => {
-            const newStates = [...prev];
+    
+    // For mobile: handle subtractive notation explanation
+    if (window.innerWidth < 640) {
+      const num = breakdown[index];
+      if (romanConvertedStates[index] && (num === 4 || num === 9 || num === 900 || num === 400 || num === 90 || num === 40)) {
+        setClickedNumber(clickedNumber === index ? null : index);
+        return; // Don't toggle conversion state on mobile for subtractive notation numbers
+      }
+    }
+    
+    setRomanConvertedStates(prev => {
+      const newStates = [...prev];
       newStates[index] = !newStates[index]; // Toggle the state
-            return newStates;
-          });
+      return newStates;
+    });
     setLastConvertedIndex(index);
   };
 
@@ -211,6 +221,7 @@ const RomanNumerals = () => {
     setShowBreakdownAnimated(false);
     setBreakdownAnimationTriggered(false);
     setHoveredNumber(null);
+    setClickedNumber(null);
   };
 
   const handleInputChange = (e) => {
@@ -372,13 +383,13 @@ const RomanNumerals = () => {
                 {/* Flexi image above the animation box, feet on top of the box */}
                 <div style={{ position: 'relative', width: '100%', height: '60px' }}>
                   <img
-                    src={flexiImage}
+                    src={`${import.meta.env.BASE_URL}Flexi_Present.png`}
                     alt="Flexi mascot"
                     style={{
                       position: 'absolute',
-                      right: '16px',
+                      right: window.innerWidth < 640 ? '8px' : '16px',
                       bottom: '28px',
-                      width: '90px',
+                      width: window.innerWidth < 640 ? '70px' : '90px',
                       height: 'auto',
                       zIndex: 2,
                       pointerEvents: 'none',
@@ -506,7 +517,7 @@ const RomanNumerals = () => {
                                     >
                                       {firstLine.map((num, index) => {
                                         const originalIndex = index;
-                                        const showSubtractiveMsg = romanConvertedStates[originalIndex] && (num === 4 || num === 9 || num === 900 || num === 400 || num === 90 || num === 40) && hoveredNumber === originalIndex;
+                                        const showSubtractiveMsg = romanConvertedStates[originalIndex] && (num === 4 || num === 9 || num === 900 || num === 400 || num === 90 || num === 40) && (window.innerWidth < 640 ? clickedNumber === originalIndex : hoveredNumber === originalIndex);
                                         return (
                                           <div
                                             key={`first-${index}`}
@@ -583,7 +594,7 @@ const RomanNumerals = () => {
                                     >
                                       {secondLine.map((num, index) => {
                                         const originalIndex = midPoint + index;
-                                        const showSubtractiveMsg = romanConvertedStates[originalIndex] && (num === 4 || num === 9 || num === 900 || num === 400 || num === 90 || num === 40) && hoveredNumber === originalIndex;
+                                        const showSubtractiveMsg = romanConvertedStates[originalIndex] && (num === 4 || num === 9 || num === 900 || num === 400 || num === 90 || num === 40) && (window.innerWidth < 640 ? clickedNumber === originalIndex : hoveredNumber === originalIndex);
                                         return (
                                           <div
                                             key={`second-${index}`}
@@ -668,7 +679,7 @@ const RomanNumerals = () => {
                               }}
                             >
                               {breakdown.map((num, index) => {
-                                const showSubtractiveMsg = romanConvertedStates[index] && (num === 4 || num === 9 || num === 900 || num === 400 || num === 90 || num === 40) && hoveredNumber === index;
+                                const showSubtractiveMsg = romanConvertedStates[index] && (num === 4 || num === 9 || num === 900 || num === 400 || num === 90 || num === 40) && (window.innerWidth < 640 ? clickedNumber === index : hoveredNumber === index);
                                 return (
                                   <div
                                     key={index}
@@ -752,7 +763,16 @@ const RomanNumerals = () => {
                   {showBreakdown && hasUserTriggeredBreakdown && result && !showFinalResult && allNumbersConverted && (
                     <div
                       className="glow-button simple-glow"
-                      style={{ margin: '24px auto 0 auto', width: 'fit-content', minWidth: 140, height: 44, fontSize: 16, fontWeight: 600, padding: '0 18px', cursor: 'pointer' }}
+                      style={{ 
+                        margin: window.innerWidth < 640 ? '24px auto 0 40px' : '24px auto 0 auto', 
+                        width: 'fit-content', 
+                        minWidth: 140, 
+                        height: 44, 
+                        fontSize: 16, 
+                        fontWeight: 600, 
+                        padding: '0 18px', 
+                        cursor: 'pointer' 
+                      }}
                       onClick={handleShowFinalResult}
                       tabIndex={0}
                       role="button"
@@ -767,20 +787,20 @@ const RomanNumerals = () => {
                     <div
                       style={{
                         position: 'absolute',
-                        right: '120px',
-                        top: '-50px',
+                        right: window.innerWidth < 640 ? '80px' : '120px',
+                        top: window.innerWidth < 640 ? '-40px' : '-50px',
                         zIndex: 3,
-                        maxWidth: flexiMessage.startsWith('Great! Now click') ? '340px' : '260px',
+                        maxWidth: window.innerWidth < 640 ? '200px' : (flexiMessage.startsWith('Great! Now click') ? '340px' : '260px'),
                       }}
                     >
                       <div style={{
                         background: 'white',
                         border: '2px solid #008543',
                         borderRadius: '16px',
-                        padding: '12px 18px',
+                        padding: window.innerWidth < 640 ? '8px 12px' : '12px 18px',
                         color: '#008543',
                         fontWeight: 600,
-                        fontSize: '1rem',
+                        fontSize: window.innerWidth < 640 ? '0.875rem' : '1rem',
                         boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
                         marginBottom: '8px',
                         position: 'relative',
