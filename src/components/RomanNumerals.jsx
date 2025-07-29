@@ -764,7 +764,7 @@ const RomanNumerals = () => {
                     <div
                       className="glow-button simple-glow"
                       style={{ 
-                        margin: window.innerWidth < 640 ? '24px auto 0 40px' : '24px auto 0 auto', 
+                        margin: window.innerWidth < 640 ? '24px auto 0 60px' : '24px auto 0 auto', 
                         width: 'fit-content', 
                         minWidth: 140, 
                         height: 44, 
