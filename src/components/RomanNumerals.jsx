@@ -416,14 +416,15 @@ const RomanNumerals = () => {
                             fontSize: '0.7rem',
                             padding: '0.2rem 0.4rem',
                             minWidth: 'auto',
-                            height: '24px',
+                            height: '32px',
+                            width: '32px',
                             boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                             borderRadius: '6px',
                             opacity: 1,
                             cursor: conversionStage === 'input' ? 'not-allowed' : 'pointer'
                           }}
                         >
-                          <ChevronLeft size={10} />
+                          <ChevronLeft size={14} />
                         </Button>
                         <Button
                           type="button"
@@ -438,14 +439,15 @@ const RomanNumerals = () => {
                             fontSize: '0.7rem',
                             padding: '0.2rem 0.4rem',
                             minWidth: 'auto',
-                            height: '24px',
+                            height: '32px',
+                            width: '32px',
                             boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                             borderRadius: '6px',
                             opacity: 1,
                             cursor: (conversionStage === 'input' && !result) || conversionStage === 'final' ? 'not-allowed' : 'pointer'
                           }}
                         >
-                          <ChevronRight size={10} />
+                          <ChevronRight size={14} />
                         </Button>
                       </div>
                     </div>
