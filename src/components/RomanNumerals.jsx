@@ -790,7 +790,7 @@ const RomanNumerals = () => {
                       style={{
                         position: 'absolute',
                         right: window.innerWidth < 640 ? '80px' : '120px',
-                        top: window.innerWidth < 640 ? '-40px' : '-50px',
+                        top: window.innerWidth < 640 ? '-45px' : '-50px',
                         zIndex: 3,
                         maxWidth: window.innerWidth < 640 ? '200px' : (flexiMessage.startsWith('Great! Now click') ? '340px' : '260px'),
                       }}
